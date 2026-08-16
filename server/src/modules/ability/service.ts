@@ -83,6 +83,7 @@ export class AbilityService extends IAbilityService {
 
       userPermissions.isAdmin = adminGroup;
       userPermissions.isSuperAdmin = isAllPlansEnabled() && isSuperAdmin(user);
+      userPermissions.orgVariableCRUD = isAllPlansEnabled() && adminGroup;
 
       if (!adminGroup) {
         const isBuilder = await this.abilityUtilService.isBuilder(user);

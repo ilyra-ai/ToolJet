@@ -175,6 +175,8 @@ NODE_ENV=development ./docker.sh
 
 O frontend, o servidor NestJS e os plugins executam em modo de desenvolvimento/watch. Os diretórios `frontend`, `server` e `plugins` são montados nos containers para refletir alterações locais.
 
+`docker/start-client.sh` executa o script normal de desenvolvimento do frontend, enquanto `docker/start-server.sh` seleciona `start:dev` para o backend.
+
 ### Production local
 
 ~~~bash
@@ -182,7 +184,7 @@ docker compose down
 NODE_ENV=production ./docker.sh --force-recreate
 ~~~
 
-Nesse modo, o entrypoint prepara os artefatos compilados, executa o setup/migrations de produção e inicia o backend com o runtime de produção; o cliente é servido com configuração de build production. A primeira inicialização pode demorar mais por causa da compilação.
+Nesse modo, `docker/dev-entrypoint.sh` executa `npm run build` antes de `db:setup:prod`. Em seguida, `docker/start-server.sh` seleciona `start:prod`; no client, `docker/start-client.sh` chama o Webpack dev server com `--mode=production`. A primeira inicialização pode demorar mais por causa da compilação.
 
 Este é um modo production local para testes funcionais. O Compose ainda usa bind mounts, portas de diagnóstico e Dockerfiles voltados ao desenvolvimento do repositório; ele não deve ser tratado como uma topologia pronta para exposição pública.
 
@@ -206,7 +208,9 @@ O backend só inicia depois de PostgreSQL e Redis passarem seus health checks e 
 3. espera Redis e PostgREST;
 4. executa schema migrations e data migrations;
 5. cria/atualiza o administrador local quando habilitado;
-6. inicia o servidor no modo solicitado.
+6. delega a inicialização a `start-server.sh`, que seleciona o runtime conforme `NODE_ENV`.
+
+No frontend, `start-client.sh` faz a seleção equivalente. O watcher de plugins continua isolado no serviço `plugins`.
 
 Todas as portas publicadas usam `TOOLJET_BIND_HOST=127.0.0.1` por padrão. Redis e o watcher de plugins não publicam portas no host.
 
@@ -476,7 +480,7 @@ Mesmo com `NODE_ENV=production`, as credenciais padrão e o bypass local de plan
 │   └── ee/                    # módulo privado ausente neste checkout
 ├── plugins/                   # conectores, operações e runtime de plugins
 ├── cypress-tests/             # testes de interface/end-to-end
-├── docker/                    # Dockerfiles e entrypoint local
+├── docker/                    # Dockerfiles, entrypoint e seletores de runtime local
 ├── deploy/                    # exemplos e artefatos de implantação
 ├── docs/                      # documentação do projeto
 ├── docker-compose.yaml        # orquestração local completa
