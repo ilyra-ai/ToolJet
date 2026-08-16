@@ -82,9 +82,9 @@ export const BASIC_PLAN_TERMS: Partial<Terms> = {
 };
 
 /**
- * Local-only license used to exercise every plan-gated capability that is
- * available in this checkout. The guard in `isDevelopmentAllPlansEnabled`
- * deliberately prevents this override from being enabled in production.
+ * Explicit local license override used to exercise every plan-gated
+ * capability that is available in this checkout. Docker Compose binds the
+ * application to localhost when this override is enabled.
  */
 export const DEVELOPMENT_ALL_PLANS_TERMS: Partial<Terms> = {
   ...BASIC_PLAN_TERMS,
@@ -172,8 +172,8 @@ export const DEVELOPMENT_ALL_PLANS_TERMS: Partial<Terms> = {
   },
 };
 
-export const isDevelopmentAllPlansEnabled = (): boolean =>
-  process.env.NODE_ENV !== 'production' && process.env.TOOLJET_DEV_UNLOCK_ALL_PLANS === 'true';
+export const isAllPlansEnabled = (): boolean =>
+  process.env.TOOLJET_UNLOCK_ALL_PLANS === 'true' || process.env.TOOLJET_DEV_UNLOCK_ALL_PLANS === 'true';
 
 export const BASIC_PLAN_SETTINGS = {
   ALLOW_PERSONAL_WORKSPACE: {

@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { RouteLoader } from './RouteLoader';
 import { useSessionManagement } from '@/_hooks/useSessionManagement';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchEdition } from '@/modules/common/helpers/utils';
+import { fetchEdition, isAllPlansEnabled } from '@/modules/common/helpers/utils';
 
 export const BuilderOrAdminRoute = ({ children }) => {
   const { isLoading, isValidSession, session, setLoading } = useSessionManagement({
@@ -13,7 +13,7 @@ export const BuilderOrAdminRoute = ({ children }) => {
   const navigate = useNavigate();
 
   const editionLower = String(fetchEdition() || '').toLowerCase();
-  const isEEorCloud = editionLower === 'ee' || editionLower === 'cloud';
+  const isEEorCloud = isAllPlansEnabled() || editionLower === 'ee' || editionLower === 'cloud';
 
   useEffect(() => {
     if (!isValidSession || session == null) return;

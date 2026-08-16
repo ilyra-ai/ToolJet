@@ -20,6 +20,9 @@ import { ResourceType, USER_ROLE } from '@modules/group-permissions/constants';
 import { AbilityUtilService } from './util.service';
 import { AbilityService as IAbilityService } from './interfaces/IService';
 import { skipAppEditingVersionHydration } from '@modules/apps/subscribers/apps.subscriber';
+import { isSuperAdmin } from '@helpers/utils.helper';
+import { isAllPlansEnabled } from '@modules/licensing/constants/PlanTerms';
+import { APP_TYPES } from '@modules/apps/constants';
 
 @Injectable()
 export class AbilityService extends IAbilityService {
@@ -79,7 +82,7 @@ export class AbilityService extends IAbilityService {
       }, DEFAULT_USER_PERMISSIONS);
 
       userPermissions.isAdmin = adminGroup;
-      userPermissions.isSuperAdmin = false;
+      userPermissions.isSuperAdmin = isAllPlansEnabled() && isSuperAdmin(user);
 
       if (!adminGroup) {
         const isBuilder = await this.abilityUtilService.isBuilder(user);
@@ -109,8 +112,28 @@ export class AbilityService extends IAbilityService {
           userPermissions[MODULES.MODULES] = await this.abilityUtilService.createUserModulesPermissions(
             moduleGranularPermissions,
             user,
-            manager
+            m
           );
+        }
+        if (resources.some((item) => item.resource === MODULES.WORKFLOWS)) {
+          const workflowGranularPermissions = allGranularPermissions.filter(
+            (permission) => permission.type === ResourceType.WORKFLOWS
+          );
+          const workflowPermissions = await this.abilityUtilService.createUserAppsPermissions(
+            workflowGranularPermissions,
+            [],
+            user,
+            m,
+            APP_TYPES.WORKFLOW
+          );
+          userPermissions[MODULES.WORKFLOWS] = {
+            editableWorkflowsId: workflowPermissions.editableAppsId,
+            isAllEditable: workflowPermissions.isAllEditable,
+            executableWorkflowsId: Array.from(
+              new Set([...workflowPermissions.editableAppsId, ...workflowPermissions.viewableAppsId])
+            ),
+            isAllExecutable: workflowPermissions.isAllEditable || workflowPermissions.isAllViewable,
+          };
         }
         if (resources.some((item) => item.resource === MODULES.GLOBAL_DATA_SOURCE)) {
           const dsGranularPermissions = allGranularPermissions.filter((perm) => perm.type === ResourceType.DATA_SOURCE);
@@ -179,7 +202,36 @@ export class AbilityService extends IAbilityService {
   async createUserDataSourcesPermissions(
     dataSourcesGranularPermissions: GranularPermissions[]
   ): Promise<UserDataSourcePermissions> {
-    const userDataSourcesPermissions: UserDataSourcePermissions = { ...DEFAULT_USER_DATA_SOURCE_PERMISSIONS };
+    const userDataSourcesPermissions: UserDataSourcePermissions = {
+      ...DEFAULT_USER_DATA_SOURCE_PERMISSIONS,
+    };
+
+    for (const granularPermission of dataSourcesGranularPermissions) {
+      const dataSourcePermission = granularPermission.dataSourcesGroupPermission;
+      if (!dataSourcePermission) continue;
+
+      const canConfigure = dataSourcePermission.canConfigure;
+      const canUse = dataSourcePermission.canUse || canConfigure;
+
+      if (granularPermission.isAll) {
+        userDataSourcesPermissions.isAllConfigurable ||= canConfigure;
+        userDataSourcesPermissions.isAllUsable ||= canUse;
+        continue;
+      }
+
+      const dataSourceIds = dataSourcePermission.groupDataSources?.map((item) => item.dataSourceId) || [];
+      if (canConfigure) {
+        userDataSourcesPermissions.configurableDataSourceId = Array.from(
+          new Set([...userDataSourcesPermissions.configurableDataSourceId, ...dataSourceIds])
+        );
+      }
+      if (canUse) {
+        userDataSourcesPermissions.usableDataSourcesId = Array.from(
+          new Set([...userDataSourcesPermissions.usableDataSourcesId, ...dataSourceIds])
+        );
+      }
+    }
+
     return userDataSourcesPermissions;
   }
 }

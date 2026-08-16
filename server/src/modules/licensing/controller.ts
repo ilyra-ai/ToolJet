@@ -12,7 +12,7 @@ import { User } from '@modules/app/decorators/user.decorator';
 import { UpdateEnvLicenseSettingDto } from '@modules/licensing/dto/update-env-license-setting.dto';
 import { LICENSE_FIELD } from './constants';
 import { LicenseTermsService } from './interfaces/IService';
-import { isDevelopmentAllPlansEnabled } from './constants/PlanTerms';
+import { isAllPlansEnabled } from './constants/PlanTerms';
 
 @InitModule(MODULES.LICENSING)
 @Controller('license')
@@ -27,7 +27,7 @@ export class LicenseController implements ILicenseController {
   @InitFeature(FEATURE_KEY.GET_ACCESS)
   @Get('access')
   async getFeatureAccess(@Req() req: Request): Promise<Terms> {
-    if (isDevelopmentAllPlansEnabled()) {
+    if (isAllPlansEnabled()) {
       const [features, licenseStatus, plan] = await Promise.all([
         this.licenseTermsService.getLicenseTermsInstance(LICENSE_FIELD.FEATURES),
         this.licenseTermsService.getLicenseTermsInstance(LICENSE_FIELD.STATUS),

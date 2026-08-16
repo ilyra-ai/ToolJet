@@ -28,6 +28,8 @@ import { IGranularPermissionsUtilService } from '../interfaces/IUtilService';
 import { APP_TYPES } from '@modules/apps/constants';
 import { LicenseTermsService } from '@modules/licensing/interfaces/IService';
 import { LICENSE_FIELD } from '@modules/licensing/constants';
+import { DataSourcesGroupPermissions } from '@entities/data_sources_group_permissions.entity';
+import { GroupDataSources } from '@entities/group_data_source.entity';
 
 @Injectable()
 export class GranularPermissionsUtilService implements IGranularPermissionsUtilService {
@@ -82,7 +84,12 @@ export class GranularPermissionsUtilService implements IGranularPermissionsUtilS
       const { createGranularPermissionDto, organizationId } = createGranularPermissionObject;
       const { name, type, groupId, isAll } = createGranularPermissionDto;
       const granularPermissions: GranularPermissions = await catchDbException(async () => {
-        const granularPermissions = manager.create(GranularPermissions, { name, type, groupId, isAll });
+        const granularPermissions = manager.create(GranularPermissions, {
+          name,
+          type,
+          groupId,
+          isAll,
+        });
         return await manager.save(granularPermissions);
       }, [DATA_BASE_CONSTRAINTS.GRANULAR_PERMISSIONS_NAME_UNIQUE]);
 
@@ -112,10 +119,20 @@ export class GranularPermissionsUtilService implements IGranularPermissionsUtilS
     await dbTransactionWrap(async (manager: EntityManager) => {
       switch (type) {
         case ResourceType.APP:
+        case ResourceType.WORKFLOWS:
+        case ResourceType.MODULE:
           await this.createAppGroupPermission(
             organizationId,
             granularPermissions,
             createResourcePermissionsObj as CreateResourcePermissionObject<ResourceType.APP>,
+            manager
+          );
+          break;
+        case ResourceType.DATA_SOURCE:
+          await this.createDataSourceGroupPermission(
+            organizationId,
+            granularPermissions,
+            createResourcePermissionsObj as CreateResourcePermissionObject<ResourceType.DATA_SOURCE>,
             manager
           );
           break;
@@ -129,6 +146,44 @@ export class GranularPermissionsUtilService implements IGranularPermissionsUtilS
           break;
         default:
           break;
+      }
+    }, manager);
+  }
+
+  protected async createDataSourceGroupPermission(
+    organizationId: string,
+    granularPermissions: GranularPermissions,
+    createDataSourcePermissionsObj: CreateResourcePermissionObject<ResourceType.DATA_SOURCE>,
+    manager?: EntityManager
+  ): Promise<void> {
+    const { action, resourcesToAdd } = createDataSourcePermissionsObj;
+
+    return await dbTransactionWrap(async (manager: EntityManager) => {
+      await this.validateResourceCreation(
+        {
+          groupId: granularPermissions.groupId,
+          organizationId,
+          isBuilderPermissions: action?.canConfigure ?? false,
+        },
+        manager
+      );
+
+      const dataSourceGroupPermissions = await manager.save(
+        manager.create(DataSourcesGroupPermissions, {
+          granularPermissionId: granularPermissions.id,
+          canConfigure: action?.canConfigure ?? false,
+          canUse: action?.canUse ?? false,
+        })
+      );
+
+      if (resourcesToAdd?.length) {
+        await manager.insert(
+          GroupDataSources,
+          resourcesToAdd.map((dataSource) => ({
+            dataSourceId: dataSource.dataSourceId,
+            dataSourcesGroupPermissionsId: dataSourceGroupPermissions.id,
+          }))
+        );
       }
     }, manager);
   }
@@ -185,7 +240,10 @@ export class GranularPermissionsUtilService implements IGranularPermissionsUtilS
       if (resourcesToAdd?.length) {
         await manager.insert(
           GroupApps,
-          resourcesToAdd.map((app) => ({ appId: app.appId, appsGroupPermissionsId: appGroupPermissions.id }))
+          resourcesToAdd.map((app) => ({
+            appId: app.appId,
+            appsGroupPermissionsId: appGroupPermissions.id,
+          }))
         );
       }
     }, manager);
@@ -474,14 +532,63 @@ export class GranularPermissionsUtilService implements IGranularPermissionsUtilS
     return await dbTransactionWrap(async (manager: EntityManager) => {
       switch (granularPermissions.type) {
         case ResourceType.APP:
+        case ResourceType.WORKFLOWS:
         case ResourceType.MODULE:
           await this.updateAppsGroupPermission(updateResourceGroupPermissionsObject, organizationId, manager);
+          break;
+        case ResourceType.DATA_SOURCE:
+          await this.updateDataSourceGroupPermission(updateResourceGroupPermissionsObject, organizationId, manager);
           break;
         case ResourceType.FOLDER:
           await this.updateFoldersGroupPermission(updateResourceGroupPermissionsObject, organizationId, manager);
           break;
         default:
           break;
+      }
+    }, manager);
+  }
+
+  protected async updateDataSourceGroupPermission(
+    updateResourceGroupPermissionsObject: UpdateResourceGroupPermissionsObject<ResourceType.DATA_SOURCE>,
+    organizationId: string,
+    manager?: EntityManager
+  ) {
+    return await dbTransactionWrap(async (manager: EntityManager) => {
+      const { granularPermissions, actions, resourcesToDelete, resourcesToAdd } = updateResourceGroupPermissionsObject;
+
+      if (actions?.canConfigure) {
+        await this.validateResourceAction(
+          {
+            groupId: granularPermissions.groupId,
+            organizationId,
+            isBuilderPermissions: true,
+          },
+          updateResourceGroupPermissionsObject.allowRoleChange,
+          manager
+        );
+      }
+
+      const dataSourcePermissions = await manager.findOne(DataSourcesGroupPermissions, {
+        where: { granularPermissionId: granularPermissions.id },
+      });
+
+      if (actions) {
+        await manager.update(DataSourcesGroupPermissions, dataSourcePermissions.id, actions);
+      }
+      if (resourcesToDelete?.length) {
+        await manager.delete(
+          GroupDataSources,
+          resourcesToDelete.map((item) => item.id)
+        );
+      }
+      if (resourcesToAdd?.length) {
+        await manager.insert(
+          GroupDataSources,
+          resourcesToAdd.map((dataSource) => ({
+            dataSourceId: dataSource.dataSourceId,
+            dataSourcesGroupPermissionsId: dataSourcePermissions.id,
+          }))
+        );
       }
     }, manager);
   }

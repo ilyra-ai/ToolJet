@@ -425,6 +425,7 @@ module.exports = {
       TOOLJET_MARKETPLACE_URL:
         process.env.TOOLJET_MARKETPLACE_URL || 'https://tooljet-plugins-production.s3.us-east-2.amazonaws.com',
       TOOLJET_EDITION: process.env.TOOLJET_EDITION,
+      TOOLJET_UNLOCK_ALL_PLANS: process.env.TOOLJET_UNLOCK_ALL_PLANS,
       ENABLE_WORKFLOW_SCHEDULING: process.env.ENABLE_WORKFLOW_SCHEDULING,
       WEBSITE_SIGNUP_URL: process.env.WEBSITE_SIGNUP_URL || 'https://www.tooljet.com/signup',
       TJ_SELFHOST_CREDITS_APP:

@@ -18,9 +18,11 @@ const fetchEdition = () => {
   return config.TOOLJET_EDITION?.toLowerCase() || 'ce';
 };
 
+const isAllPlansEnabled = () => String(config.TOOLJET_UNLOCK_ALL_PLANS).toLowerCase() === 'true';
+
 const isWorkflowsFeatureEnabled = () => {
   const edition = fetchEdition();
-  return edition === 'ee';
+  return isAllPlansEnabled() || edition === 'ee';
 };
 
-export { processErrorMessage, clearPageHistory, fetchEdition, isWorkflowsFeatureEnabled };
+export { processErrorMessage, clearPageHistory, fetchEdition, isAllPlansEnabled, isWorkflowsFeatureEnabled };

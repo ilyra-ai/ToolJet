@@ -71,6 +71,8 @@ PGRST_PORT=${PGRST_SERVER_PORT:-3000}
 
 # Run database setup (development mode)
 if [ "${NODE_ENV:-development}" = "production" ]; then
+  echo "Building the server (production mode)..."
+  npm run build
   echo "Running database setup (production mode)..."
   npm run db:setup:prod
 else

@@ -1,5 +1,5 @@
 import LicenseBase from './LicenseBase';
-import { BASIC_PLAN_TERMS, DEVELOPMENT_ALL_PLANS_TERMS, isDevelopmentAllPlansEnabled } from '../constants/PlanTerms';
+import { BASIC_PLAN_TERMS, DEVELOPMENT_ALL_PLANS_TERMS, isAllPlansEnabled } from '../constants/PlanTerms';
 import { LICENSE_TYPE } from '../constants';
 
 export default class License extends LicenseBase {
@@ -7,12 +7,12 @@ export default class License extends LicenseBase {
 
   private constructor(key: string, updatedDate: Date) {
     super(
-      isDevelopmentAllPlansEnabled() ? DEVELOPMENT_ALL_PLANS_TERMS : BASIC_PLAN_TERMS,
-      isDevelopmentAllPlansEnabled() ? DEVELOPMENT_ALL_PLANS_TERMS : undefined,
+      isAllPlansEnabled() ? DEVELOPMENT_ALL_PLANS_TERMS : BASIC_PLAN_TERMS,
+      isAllPlansEnabled() ? DEVELOPMENT_ALL_PLANS_TERMS : undefined,
       updatedDate,
       undefined,
       undefined,
-      isDevelopmentAllPlansEnabled() ? LICENSE_TYPE.ENTERPRISE : undefined
+      isAllPlansEnabled() ? LICENSE_TYPE.ENTERPRISE : undefined
     );
   }
 

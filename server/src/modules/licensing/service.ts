@@ -2,7 +2,7 @@ import { Injectable, HttpException } from '@nestjs/common';
 import { PLAN_DETAILS } from './constants';
 import { ILicenseService } from './interfaces/IService';
 import { User } from '@entities/user.entity';
-import { isDevelopmentAllPlansEnabled } from './constants/PlanTerms';
+import { isAllPlansEnabled } from './constants/PlanTerms';
 
 @Injectable()
 export class LicenseService implements ILicenseService {
@@ -29,7 +29,7 @@ export class LicenseService implements ILicenseService {
       throw new HttpException('Failed to fetch plans', 500);
     }
     return {
-      plans: isDevelopmentAllPlansEnabled() ? { ...PLAN_DETAILS, currentPlan: 'enterprise' } : PLAN_DETAILS,
+      plans: isAllPlansEnabled() ? { ...PLAN_DETAILS, currentPlan: 'enterprise' } : PLAN_DETAILS,
     };
   }
 }
